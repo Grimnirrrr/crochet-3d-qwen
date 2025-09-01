@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Three.js r128 CDN Test</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Loading Three.js...</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    console.log('📄 CDN Test: Starting...');
+
+    // Step 1: Check version
+    console.log('THREE.REVISION:', THREE.REVISION);
+    document.getElementById('info').innerHTML = `Version: ${THREE.REVISION}<br>Testing features...`;
+
+    // Step 2: Test SphereGeometry (should work)
+    try {
+      const sphereGeometry = new THREE.SphereGeometry(1, 16, 12);
+      console.log('✅ SphereGeometry works:', sphereGeometry);
+      document.getElementById('info').innerHTML += '<br>✅ SphereGeometry: OK';
+    } catch (e) {
+      console.error('❌ SphereGeometry failed:', e);
+      document.getElementById('info').innerHTML += '<br>❌ SphereGeometry: FAILED';
+    }
+
+    // Step 3: Test CapsuleGeometry (should fail in r128)
+    try {
+      const bad = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+      console.log('❌ CapsuleGeometry exists — NOT expected in r128!');
+      document.getElementById('info').innerHTML += '<br>❌ CapsuleGeometry: EXISTS (WRONG VERSION!)';
+    } catch (e) {
+      console.log('✅ CapsuleGeometry correctly not found:', e.message);
+      document.getElementById('info').innerHTML += '<br>✅ CapsuleGeometry: MISSING (correct for r128)';
+    }
+
+    // Step 4: Create a minimal scene (optional visual test)
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshPhongMaterial({ color: 0x00aaff });
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 5, 5).normalize();
+    scene.add(light);
+
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    console.log('🎉 CDN Test Complete. Check the info panel.');
+  </script>
+</body>
+</html>
