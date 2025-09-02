@@ -6,64 +6,92 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // --- Three.js Setup ---
+    // --- Scene Setup ---
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0xeeeeee); // Light gray background
+    renderer.setClearColor(0xeeeeee);
 
-    // Add canvas to DOM
     const mount = mountRef.current;
     mount?.appendChild(renderer.domElement);
 
     // --- Lighting ---
-    const ambientLight = new THREE.AmbientLight(0x404040);
-    scene.add(ambientLight);
+    const ambient = new THREE.AmbientLight(0x404040);
+    scene.add(ambient);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(5, 5, 5).normalize();
-    scene.add(directionalLight);
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 5, 5).normalize();
+    scene.add(light);
 
-    // --- Green Cube (Placeholder) ---
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
-
-    // --- Camera Initial Position ---
+    // --- Camera Position ---
     camera.position.z = 5;
 
-    // --- Manual Rotation: Mouse Control ---
+    // --- Manual Rotation (from D0.3) ---
     let mouseX = 0;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      // Map mouse X (0 → window.innerWidth) to -1 → +1
+    document.addEventListener('mousemove', (e) => {
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-    };
+    });
 
-    document.addEventListener('mousemove', handleMouseMove);
+    // --- Create Two Stitches (Spheres) ---
+    const stitch1 = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 16, 12),
+      new THREE.MeshPhongMaterial({ color: 0xfbbf24 }) // Gold color
+    );
+    stitch1.position.set(-1.5, 0, 0);
+    scene.add(stitch1);
+
+    const stitch2 = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 16, 12),
+      new THREE.MeshPhongMaterial({ color: 0xfbbf24 })
+    );
+    stitch2.position.set(1.5, 0, 0);
+    scene.add(stitch2);
+
+    // --- Create Curved Yarn Between Stitches ---
+    // Add a control point to create a sag (realistic yarn droop)
+    const midPoint = new THREE.Vector3(0, -0.5, 0); // Y is lower = sag
+
+    const curve = new THREE.CatmullRomCurve3([
+      stitch1.position.clone(),
+      midPoint,
+      stitch2.position.clone()
+    ]);
+
+    // Create a tube around the curve
+    const tubeGeometry = new THREE.TubeGeometry(
+      curve,     // The path
+      20,        // Segments along the path
+      0.05,      // Radius of the tube (yarn thickness)
+      8,         // Number of segments around the tube
+      false      // No closed loop
+    );
+
+    const yarnMaterial = new THREE.MeshPhongMaterial({
+      color: 0xf59e0b, // Amber yarn
+      opacity: 0.9,
+      transparent: true
+    });
+
+    const yarnTube = new THREE.Mesh(tubeGeometry, yarnMaterial);
+    scene.add(yarnTube);
 
     // --- Animation Loop ---
-    const animate = () => {
+    function animate() {
       requestAnimationFrame(animate);
 
-      // Rotate camera around Y axis based on mouse X
-      const radius = 5;
-      camera.position.x = Math.sin(mouseX * Math.PI) * radius;
-      camera.position.z = Math.cos(mouseX * Math.PI) * radius;
-      camera.lookAt(0, 0, 0); // Always look at center
-
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
+      // Rotate camera
+      camera.position.x = Math.sin(mouseX * Math.PI) * 5;
+      camera.position.z = Math.cos(mouseX * Math.PI) * 5;
+      camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
-    };
+    }
     animate();
 
-    // --- Cleanup on Unmount ---
+    // --- Cleanup ---
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousemove', () => {});
       mount?.removeChild(renderer.domElement);
       renderer.dispose();
     };
