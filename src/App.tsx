@@ -25,64 +25,55 @@ export default function App() {
     scene.add(light);
 
     // --- Camera Position ---
-    camera.position.z = 5;
+    camera.position.z = 10; // Pull back for 500 stitches
 
-    // --- Manual Rotation (from D0.3) ---
+    // --- Manual Rotation ---
     let mouseX = 0;
     document.addEventListener('mousemove', (e) => {
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
     });
 
-    // --- Create Two Stitches (Spheres) ---
-    const stitch1 = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 16, 12),
-      new THREE.MeshPhongMaterial({ color: 0xfbbf24 }) // Gold color
-    );
-    stitch1.position.set(-1.5, 0, 0);
-    scene.add(stitch1);
+    // --- Group to Hold All Stitches ---
+    const stitchesGroup = new THREE.Group();
+    scene.add(stitchesGroup);
 
-    const stitch2 = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 16, 12),
-      new THREE.MeshPhongMaterial({ color: 0xfbbf24 })
-    );
-    stitch2.position.set(1.5, 0, 0);
-    scene.add(stitch2);
+    // --- Create 500 Stitches in a Spiral Pattern ---
+    const count = 500;
 
-    // --- Create Curved Yarn Between Stitches ---
-    // Add a control point to create a sag (realistic yarn droop)
-    const midPoint = new THREE.Vector3(0, -0.5, 0); // Y is lower = sag
+    for (let i = 0; i < count; i++) {
+      const angle = i * 0.4; // Fibonacci-like spiral
+      const x = Math.cos(angle) * angle * 0.2;
+      const y = Math.sin(angle) * angle * 0.2;
+      const z = i * 0.02;
 
-    const curve = new THREE.CatmullRomCurve3([
-      stitch1.position.clone(),
-      midPoint,
-      stitch2.position.clone()
-    ]);
+      const stitch = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 8, 6),
+        new THREE.MeshPhongMaterial({
+          color: 0xfbbf24,
+          shininess: 30
+        })
+      );
+      stitch.position.set(x, y, z);
+      stitchesGroup.add(stitch);
+    }
 
-    // Create a tube around the curve
-    const tubeGeometry = new THREE.TubeGeometry(
-      curve,     // The path
-      20,        // Segments along the path
-      0.05,      // Radius of the tube (yarn thickness)
-      8,         // Number of segments around the tube
-      false      // No closed loop
-    );
+    console.log('✅ 500 stitches added');
+    console.log('Geometries:', renderer.info.memory.geometries);
+    console.log('Textures:', renderer.info.memory.textures);
+    console.log('Programs:', renderer.info.programs?.length ?? 'unknown');
 
-    const yarnMaterial = new THREE.MeshPhongMaterial({
-      color: 0xf59e0b, // Amber yarn
-      opacity: 0.9,
-      transparent: true
-    });
-
-    const yarnTube = new THREE.Mesh(tubeGeometry, yarnMaterial);
-    scene.add(yarnTube);
+    // Optional: Log memory every 3 seconds
+    const memoryInterval = setInterval(() => {
+      console.log('📊 Memory Info:', renderer.info.memory);
+    }, 3000);
 
     // --- Animation Loop ---
     function animate() {
       requestAnimationFrame(animate);
 
       // Rotate camera
-      camera.position.x = Math.sin(mouseX * Math.PI) * 5;
-      camera.position.z = Math.cos(mouseX * Math.PI) * 5;
+      camera.position.x = Math.sin(mouseX * Math.PI) * 15;
+      camera.position.z = Math.cos(mouseX * Math.PI) * 15;
       camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
@@ -91,9 +82,22 @@ export default function App() {
 
     // --- Cleanup ---
     return () => {
+      clearInterval(memoryInterval);
       document.removeEventListener('mousemove', () => {});
+
+      // Dispose of all stitches
+      stitchesGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          child.material.dispose();
+        }
+      });
+
+      scene.remove(stitchesGroup);
       mount?.removeChild(renderer.domElement);
       renderer.dispose();
+
+      console.log('🗑️ Memory cleaned up');
     };
   }, []);
 
