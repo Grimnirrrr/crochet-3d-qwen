@@ -2,12 +2,13 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { usePatternPlayer } from './hooks/usePatternPlayer';
+import { PatternInput } from './components/PatternInput';
 
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
 
-  const { currentRound, pattern, addNextRound } = usePatternPlayer();
+  const { currentRound, pattern, addNextRound, loadPattern } = usePatternPlayer();
 
   useEffect(() => {
     // --- Scene Setup ---
@@ -103,6 +104,10 @@ export default function App() {
       >
         <h2>Amigurumi Builder</h2>
 
+        {/* Pattern Input */}
+        <PatternInput onParse={loadPattern} />
+
+        {/* Add Round Button */}
         <button
           onClick={() => {
             if (sceneRef.current) {
@@ -122,6 +127,7 @@ export default function App() {
           Add Round {currentRound + 1}
         </button>
 
+        {/* Instruction */}
         <div>
           <strong>Next Instruction:</strong>
           <p style={{ marginTop: '8px', fontSize: '14px', lineHeight: 1.5 }}>
@@ -129,6 +135,7 @@ export default function App() {
           </p>
         </div>
 
+        {/* Progress */}
         <div>
           <strong>Progress:</strong>
           <p style={{ fontSize: '14px' }}>
