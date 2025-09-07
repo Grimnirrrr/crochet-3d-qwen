@@ -1,8 +1,7 @@
 // src/App.tsx
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { createSingleCrochet } from './lib/stitchPrimitives';
-import { createYarnBetweenStitches } from './lib/yarnConnector';
+import { buildRound } from './lib/roundBuilder';
 
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -27,7 +26,7 @@ export default function App() {
     scene.add(light);
 
     // --- Camera Position ---
-    camera.position.z = 3;
+    camera.position.z = 5;
 
     // --- Manual Rotation ---
     let mouseX = 0;
@@ -35,30 +34,17 @@ export default function App() {
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
     });
 
-    // --- Create Two Stitches ---
-    const stitch1 = createSingleCrochet();
-    stitch1.position.set(-1, 0, 0);
-    scene.add(stitch1);
-
-    const stitch2 = createSingleCrochet();
-    stitch2.position.set(1, 0, 0);
-    scene.add(stitch2);
-
-    // --- Connect with Yarn ---
-    const yarn = createYarnBetweenStitches(
-      stitch1.position,
-      stitch2.position,
-      0.15
-    );
-    scene.add(yarn);
+    // --- Build Round 1: 6 sc in MR ---
+    const round1 = buildRound(6, 1.0, 0);
+    scene.add(round1);
 
     // --- Animation Loop ---
     function animate() {
       requestAnimationFrame(animate);
 
       // Rotate camera
-      camera.position.x = Math.sin(mouseX * Math.PI) * 3;
-      camera.position.z = Math.cos(mouseX * Math.PI) * 3;
+      camera.position.x = Math.sin(mouseX * Math.PI) * 5;
+      camera.position.z = Math.cos(mouseX * Math.PI) * 5;
       camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
