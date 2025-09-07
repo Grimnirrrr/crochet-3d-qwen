@@ -1,10 +1,13 @@
 // src/App.tsx
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { buildRound } from './lib/roundBuilder';
+import { usePatternPlayer } from './hooks/usePatternPlayer';
 
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+
+  const { currentRound, pattern, addNextRound } = usePatternPlayer();
 
   useEffect(() => {
     // --- Scene Setup ---
@@ -12,10 +15,14 @@ export default function App() {
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0xeeeeee);
+    renderer.setClearColor(0x000000);
 
     const mount = mountRef.current;
-    mount?.appendChild(renderer.domElement);
+    if (mount) {
+      mount.appendChild(renderer.domElement);
+    }
+
+    sceneRef.current = scene;
 
     // --- Lighting ---
     const ambient = new THREE.AmbientLight(0x404040);
@@ -26,7 +33,7 @@ export default function App() {
     scene.add(light);
 
     // --- Camera Position ---
-    camera.position.z = 5;
+    camera.position.z = 8;
 
     // --- Manual Rotation ---
     let mouseX = 0;
@@ -34,41 +41,101 @@ export default function App() {
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
     });
 
-    // --- Build Round 1: 6 sc in MR ---
-    const round1 = buildRound(6, 1.0, 0);
-    scene.add(round1);
+    // --- Resize Handler ---
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
 
     // --- Animation Loop ---
     function animate() {
       requestAnimationFrame(animate);
-
-      // Rotate camera
-      camera.position.x = Math.sin(mouseX * Math.PI) * 5;
-      camera.position.z = Math.cos(mouseX * Math.PI) * 5;
+      camera.position.x = Math.sin(mouseX * Math.PI) * 8;
+      camera.position.z = Math.cos(mouseX * Math.PI) * 8;
       camera.lookAt(0, 0, 0);
-
       renderer.render(scene, camera);
     }
     animate();
 
     // --- Cleanup ---
     return () => {
+      window.removeEventListener('resize', handleResize);
       document.removeEventListener('mousemove', () => {});
-      mount?.removeChild(renderer.domElement);
+      if (mount && renderer.domElement && mount.contains(renderer.domElement)) {
+        mount.removeChild(renderer.domElement);
+      }
       renderer.dispose();
     };
   }, []);
 
   return (
-    <div
-      ref={mountRef}
-      style={{
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        margin: 0,
-        padding: 0
-      }}
-    />
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      minHeight: '100vh',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      {/* 3D View */}
+      <div
+        ref={mountRef}
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          minHeight: '100vh',
+          minWidth: '500px',
+          backgroundColor: '#000'
+        }}
+      />
+
+      {/* Controls Panel */}
+      <div
+        style={{
+          width: 250,
+          backgroundColor: '#f0f0f0',
+          padding: '20px',
+          borderLeft: '1px solid #ddd',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}
+      >
+        <h2>Amigurumi Builder</h2>
+
+        <button
+          onClick={() => {
+            if (sceneRef.current) {
+              addNextRound(sceneRef.current);
+            }
+          }}
+          style={{
+            padding: '12px',
+            fontSize: '16px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Add Round {currentRound + 1}
+        </button>
+
+        <div>
+          <strong>Next Instruction:</strong>
+          <p style={{ marginTop: '8px', fontSize: '14px', lineHeight: 1.5 }}>
+            {pattern[currentRound]?.instruction || "Pattern complete!"}
+          </p>
+        </div>
+
+        <div>
+          <strong>Progress:</strong>
+          <p style={{ fontSize: '14px' }}>
+            {currentRound} / {pattern.length} rounds added
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
