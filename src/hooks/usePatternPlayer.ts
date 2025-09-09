@@ -73,11 +73,11 @@ export function usePatternPlayer() {
     currentRound,
     pattern,
     addNextRound,
-    loadPattern  // Expose to UI
+    loadPattern
   };
 }
 
-// Move parsePattern here so it's in scope
+// Standalone function: parsePattern
 function parsePattern(text: string) {
   const lines = text.trim().split('\n').filter(line => line.trim() !== '');
   const result: { text: string; stitches: number }[] = [];
@@ -88,35 +88,39 @@ function parsePattern(text: string) {
 
     // --- Detect: [sc, inc] x6 ---
     const repeatMatch = trimmed.match(/\[(.+?)\]\s*x\s*(\d+)/i);
-if (repeatMatch) {
-  const inner = repeatMatch[1]; // "sc, inc"
-  const repeatCount = parseInt(repeatMatch[2], 10); // 6
+    if (repeatMatch) {
+      const inner = repeatMatch[1];
+      const repeatCount = parseInt(repeatMatch[2], 10);
 
-  // Count actual stitch output
-  let stitchesInRepeat = 0;
-  const parts = inner.split(',').map(p => p.trim());
+      let stitchesInRepeat = 0;
+      const parts = inner.split(',').map(p => p.trim());
 
-  for (const part of parts) {
-    if (part === 'inc') {
-      stitchesInRepeat += 2; // increase = 2 stitches
-    } else if (part === 'dec') {
-      stitchesInRepeat += 1; // decrease = 1 stitch (from 2)
-    } else {
-      // Assume single stitch: sc, dc, etc.
-      stitchesInRepeat += 1;
+      for (const part of parts) {
+        if (part === 'inc') {
+          stitchesInRepeat += 2;
+        } else if (part === 'dec') {
+          stitchesInRepeat += 1;
+        } else {
+          stitchesInRepeat += 1;
+        }
+      }
+
+      const totalStitches = stitchesInRepeat * repeatCount;
+      result.push({ text: trimmed, stitches: totalStitches });
+      prev = totalStitches;
+      continue;
     }
-  }
 
-  const totalStitches = stitchesInRepeat * repeatCount;
+    // --- Extract (N) at end of line: (18) ---
+    const parenMatch = trimmed.match(/\((\d+)\)$/);
+    if (parenMatch) {
+      const stitches = parseInt(parenMatch[1], 10);
+      result.push({ text: trimmed, stitches });
+      prev = stitches;
+      continue;
+    }
 
-  result.push({
-    text: trimmed,
-    stitches: totalStitches
-  });
-  prev = totalStitches;
-  continue;
-}
-    // --- Fallback: extract last number or use logic ---
+    // --- Fallback: extract numbers ---
     const numbers = trimmed.match(/\d+/g)?.map(Number) || [];
 
     let stitches = 0;
@@ -125,15 +129,12 @@ if (repeatMatch) {
     } else if (trimmed.includes('inc')) {
       stitches = Math.floor(prev * 1.5);
     } else if (numbers.length > 0) {
-      stitches = numbers[numbers.length - 1]; // Use last number (e.g., in parentheses)
+      stitches = numbers[numbers.length - 1];
     } else {
       stitches = prev;
     }
 
-    result.push({
-      text: trimmed,
-      stitches
-    });
+    result.push({ text: trimmed, stitches });
     prev = stitches;
   }
 
