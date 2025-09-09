@@ -4,41 +4,54 @@ import * as THREE from 'three';
 import { buildRound } from '../lib/roundBuilder';
 import { createYarnBetweenStitches } from '../lib/yarnConnector';
 
-console.log('🔧 Debug:', { buildRound, createYarnBetweenStitches });
-
 export function usePatternPlayer() {
   const [rounds, setRounds] = useState<THREE.Group[]>([]);
   const [currentRound, setCurrentRound] = useState(0);
 
-  // Hardcoded amigurumi pattern (e.g., a ball)
-  const pattern = [
-    { round: 1, stitches: 6,  instruction: "6 sc in MR" },
+  // Start with hardcoded pattern
+  const [pattern, setPattern] = useState<{
+    round?: number;
+    stitches: number;
+    instruction: string;
+  }[]>([
+    { round: 1, stitches: 6, instruction: "6 sc in MR" },
     { round: 2, stitches: 12, instruction: "2 sc in each (12)" },
     { round: 3, stitches: 18, instruction: "[sc, inc] x6" },
     { round: 4, stitches: 24, instruction: "[2sc, inc] x6" },
     { round: 5, stitches: 30, instruction: "[3sc, inc] x6" },
-  ];
+  ]);
 
-  /**
-   * Adds the next round to the 3D scene
-   * @param scene - Three.js scene to add to
-   */
+  // Allow external pattern update
+  const loadPattern = (text: string) => {
+    const parsed = parsePattern(text);
+    const newPattern = parsed.map((p, i) => ({
+      round: i + 1,
+      stitches: p.stitches,
+      instruction: p.text
+    }));
+    setPattern(newPattern);
+    reset(); // Clear 3D model
+  };
+
+  const reset = () => {
+    setRounds([]);
+    setCurrentRound(0);
+  };
+
   const addNextRound = (scene: THREE.Scene) => {
     if (currentRound >= pattern.length) return;
 
     const roundData = pattern[currentRound];
-    const radius = Math.sqrt(roundData.stitches) * 0.25; // Scale radius by stitch count
-    const height = currentRound * 0.6; // Stack vertically
+    const radius = Math.sqrt(roundData.stitches) * 0.25;
+    const height = currentRound * 0.6;
 
     const newRound = buildRound(roundData.stitches, radius, height);
 
-    // Connect to previous round with vertical yarns
     if (rounds.length > 0) {
       const prevRound = rounds[rounds.length - 1];
       const prevPositions = prevRound.userData.stitchPositions as THREE.Vector3[];
       const currPositions = newRound.userData.stitchPositions as THREE.Vector3[];
 
-      // Connect each stitch in new round to one in previous round
       for (let i = 0; i < currPositions.length; i++) {
         const prevIndex = i % prevPositions.length;
         const yarn = createYarnBetweenStitches(
@@ -59,6 +72,70 @@ export function usePatternPlayer() {
     rounds,
     currentRound,
     pattern,
-    addNextRound
+    addNextRound,
+    loadPattern  // Expose to UI
   };
+}
+
+// Move parsePattern here so it's in scope
+function parsePattern(text: string) {
+  const lines = text.trim().split('\n').filter(line => line.trim() !== '');
+  const result: { text: string; stitches: number }[] = [];
+  let prev = 6; // Default for first round
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // --- Detect: [sc, inc] x6 ---
+    const repeatMatch = trimmed.match(/\[(.+?)\]\s*x\s*(\d+)/i);
+if (repeatMatch) {
+  const inner = repeatMatch[1]; // "sc, inc"
+  const repeatCount = parseInt(repeatMatch[2], 10); // 6
+
+  // Count actual stitch output
+  let stitchesInRepeat = 0;
+  const parts = inner.split(',').map(p => p.trim());
+
+  for (const part of parts) {
+    if (part === 'inc') {
+      stitchesInRepeat += 2; // increase = 2 stitches
+    } else if (part === 'dec') {
+      stitchesInRepeat += 1; // decrease = 1 stitch (from 2)
+    } else {
+      // Assume single stitch: sc, dc, etc.
+      stitchesInRepeat += 1;
+    }
+  }
+
+  const totalStitches = stitchesInRepeat * repeatCount;
+
+  result.push({
+    text: trimmed,
+    stitches: totalStitches
+  });
+  prev = totalStitches;
+  continue;
+}
+    // --- Fallback: extract last number or use logic ---
+    const numbers = trimmed.match(/\d+/g)?.map(Number) || [];
+
+    let stitches = 0;
+    if (trimmed.includes('MR') || trimmed.includes('magic ring')) {
+      stitches = numbers[0] || 6;
+    } else if (trimmed.includes('inc')) {
+      stitches = Math.floor(prev * 1.5);
+    } else if (numbers.length > 0) {
+      stitches = numbers[numbers.length - 1]; // Use last number (e.g., in parentheses)
+    } else {
+      stitches = prev;
+    }
+
+    result.push({
+      text: trimmed,
+      stitches
+    });
+    prev = stitches;
+  }
+
+  return result;
 }
