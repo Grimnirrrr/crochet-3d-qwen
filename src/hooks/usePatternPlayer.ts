@@ -22,15 +22,26 @@ export function usePatternPlayer() {
   ]);
 
   // Allow external pattern update
-  const loadPattern = (text: string) => {
-    const parsed = parsePattern(text);
+  const loadPattern = (text: string, isUSTerms: boolean = true) => {
+    let processedText = text;
+
+    if (!isUSTerms) {
+      // Convert UK terms to US for internal parsing
+      processedText = text
+        .replace(/dc(?=\s)/g, 'sc')     // UK dc = US sc
+        .replace(/tr(?=\s)/g, 'dc')     // UK tr = US dc
+        .replace(/increase/gi, 'inc')
+        .replace(/decrease/gi, 'dec');
+    }
+
+    const parsed = parsePattern(processedText);
     const newPattern = parsed.map((p, i) => ({
       round: i + 1,
       stitches: p.stitches,
       instruction: p.text
     }));
     setPattern(newPattern);
-    reset(); // Clear 3D model
+    reset();
   };
 
   const reset = () => {
