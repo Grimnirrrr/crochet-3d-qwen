@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { usePatternPlayer } from './hooks/usePatternPlayer';
 import { PatternInput } from './components/PatternInput';
+import { getHintForLine } from './lib/patternHints';
 
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -105,7 +106,7 @@ export default function App() {
         <h2>Amigurumi Builder</h2>
 
         {/* Pattern Input */}
-        <PatternInput onParse={loadPattern} />
+        <PatternInput onParse={(text, isUSTerms) => loadPattern(text, isUSTerms)} />
 
         {/* Add Round Button */}
         <button
@@ -134,6 +135,21 @@ export default function App() {
             {pattern[currentRound]?.instruction || "Pattern complete!"}
           </p>
         </div>
+
+        {/* Hint */}
+        {pattern[currentRound] && (
+          <div style={{
+            fontSize: '12px',
+            fontStyle: 'italic',
+            color: '#555',
+            padding: '8px',
+            backgroundColor: '#f9f9f9',
+            borderRadius: '4px',
+            border: '1px solid #eee'
+          }}>
+            {getHintForLine(pattern[currentRound].instruction)}
+          </div>
+        )}
 
         {/* Progress */}
         <div>
