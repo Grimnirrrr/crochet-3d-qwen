@@ -9,7 +9,15 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
 
-  const { currentRound, pattern, addNextRound, loadPattern } = usePatternPlayer();
+  // ✅ Destructure all functions including save/load
+  const {
+    currentRound,
+    pattern,
+    addNextRound,
+    loadPattern,
+    savePattern,
+    loadPatternFromStorage
+  } = usePatternPlayer();
 
   useEffect(() => {
     // --- Scene Setup ---
@@ -107,6 +115,40 @@ export default function App() {
 
         {/* Pattern Input */}
         <PatternInput onParse={(text, isUSTerms) => loadPattern(text, isUSTerms)} />
+
+        {/* Save/Load Buttons */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={savePattern}
+            style={{
+              flex: 1,
+              padding: '8px',
+              fontSize: '14px',
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Save Pattern
+          </button>
+          <button
+            onClick={loadPatternFromStorage}
+            style={{
+              flex: 1,
+              padding: '8px',
+              fontSize: '14px',
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Load Pattern
+          </button>
+        </div>
 
         {/* Add Round Button */}
         <button
