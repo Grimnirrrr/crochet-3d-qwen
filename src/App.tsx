@@ -9,14 +9,17 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
 
-  // ✅ Destructure all functions including save/load
+  // ✅ Destructure ALL functions in one place
   const {
     currentRound,
     pattern,
     addNextRound,
     loadPattern,
     savePattern,
-    loadPatternFromStorage
+    loadPatternFromStorage,
+    exportToJson,
+    exportToSvg,
+    exportToPdf
   } = usePatternPlayer();
 
   useEffect(() => {
@@ -118,54 +121,14 @@ export default function App() {
 
         {/* Save/Load Buttons */}
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={savePattern}
-            style={{
-              flex: 1,
-              padding: '8px',
-              fontSize: '14px',
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Save Pattern
-          </button>
-          <button
-            onClick={loadPatternFromStorage}
-            style={{
-              flex: 1,
-              padding: '8px',
-              fontSize: '14px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Load Pattern
-          </button>
+          <button onClick={savePattern} style={buttonStyle('#17a2b8')}>Save</button>
+          <button onClick={loadPatternFromStorage} style={buttonStyle('#28a745')}>Load</button>
         </div>
 
         {/* Add Round Button */}
         <button
-          onClick={() => {
-            if (sceneRef.current) {
-              addNextRound(sceneRef.current);
-            }
-          }}
-          style={{
-            padding: '12px',
-            fontSize: '16px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
+          onClick={() => sceneRef.current && addNextRound(sceneRef.current)}
+          style={buttonStyle('#007bff', '16px', '12px')}
         >
           Add Round {currentRound + 1}
         </button>
@@ -200,7 +163,28 @@ export default function App() {
             {currentRound} / {pattern.length} rounds added
           </p>
         </div>
+
+        {/* Export */}
+        <div style={{ marginTop: '16px', borderTop: '1px solid #ddd', paddingTop: '16px' }}>
+          <strong>Export</strong>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+            <button onClick={exportToJson} style={buttonStyle('#6f42c1')}>Export JSON</button>
+            <button onClick={exportToSvg} style={buttonStyle('#d97706')}>Export SVG</button>
+            <button onClick={exportToPdf} style={buttonStyle('#0d6efd')}>Export PDF</button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+// Reusable button style
+const buttonStyle = (bgColor: string, fontSize = '14px', padding = '8px') => ({
+  padding,
+  fontSize,
+  backgroundColor: bgColor,
+  color: 'white',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer'
+});
