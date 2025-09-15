@@ -1,5 +1,5 @@
 // src/hooks/usePatternPlayer.ts
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { buildRound } from '../lib/roundBuilder';
 import { createYarnBetweenStitches } from '../lib/yarnConnector';
@@ -20,6 +20,80 @@ export function usePatternPlayer() {
     { round: 4, stitches: 24, instruction: "[2sc, inc] x6" },
     { round: 5, stitches: 30, instruction: "[3sc, inc] x6" },
   ]);
+
+  // Reset 3D scene
+  const reset = () => {
+    setRounds([]);
+    setCurrentRound(0);
+  };
+
+  // Save current pattern to localStorage
+  const savePattern = () => {
+    const data = {
+      pattern: pattern.map(p => ({
+        stitches: p.stitches,
+        instruction: p.instruction
+      })),
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('crochet-pattern', JSON.stringify(data));
+    console.log('✅ Pattern saved to local storage');
+  };
+
+  // Load pattern from localStorage
+  const loadPatternFromStorage = () => {
+    const saved = localStorage.getItem('crochet-pattern');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        const newPattern = data.pattern.map((p: any, i: number) => ({
+          round: i + 1,
+          stitches: p.stitches,
+          instruction: p.instruction
+        }));
+        setPattern(newPattern);
+        reset(); // Clear 3D model before rebuild
+        console.log('✅ Loaded pattern from local storage');
+      } catch (e) {
+        console.error('Failed to load pattern:', e);
+      }
+    }
+  };
+
+  // Auto-save whenever pattern or rounds change
+  const autoSave = () => {
+    const data = {
+      pattern: pattern.map(p => ({
+        stitches: p.stitches,
+        instruction: p.instruction
+      })),
+      timestamp: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem('crochet-pattern-autosave', JSON.stringify(data));
+    } catch (e) {
+      console.warn('Auto-save failed:', e);
+    }
+  };
+
+  // Try to load autosave on startup
+  useEffect(() => {
+    const saved = localStorage.getItem('crochet-pattern-autosave');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        const newPattern = data.pattern.map((p: any, i: number) => ({
+          round: i + 1,
+          stitches: p.stitches,
+          instruction: p.instruction
+        }));
+        setPattern(newPattern);
+        console.log('🔁 Restored from auto-save');
+      } catch (e) {
+        console.warn('Failed to load auto-saved pattern', e);
+      }
+    }
+  }, []);
 
   // Allow external pattern update
   const loadPattern = (text: string, isUSTerms: boolean = true) => {
@@ -42,13 +116,10 @@ export function usePatternPlayer() {
     }));
     setPattern(newPattern);
     reset();
+    autoSave(); // Save after loading
   };
 
-  const reset = () => {
-    setRounds([]);
-    setCurrentRound(0);
-  };
-
+  // Add next round to 3D scene
   const addNextRound = (scene: THREE.Scene) => {
     if (currentRound >= pattern.length) return;
 
@@ -77,14 +148,99 @@ export function usePatternPlayer() {
     scene.add(newRound);
     setRounds([...rounds, newRound]);
     setCurrentRound(currentRound + 1);
+    autoSave(); // Save after each round
   };
 
+  // Export to JSON
+  const exportToJson = () => {
+    const data = {
+      app: "CrochetAmigurumiEngine-v5.0-BULLETPROOF",
+      exportedAt: new Date().toISOString(),
+      pattern: pattern.map((p, i) => ({
+        round: i + 1,
+        instruction: p.instruction,
+        stitchCount: p.stitches
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crochet-pattern-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to SVG
+  const exportToSvg = () => {
+    const radius = 100;
+    const centerX = 150;
+    const centerY = 150;
+    let circles = '';
+
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const x = Math.cos(angle) * radius + centerX;
+      const y = Math.sin(angle) * radius + centerY;
+      circles += `<circle cx="${x}" cy="${y}" r="15" fill="#fbbf24" stroke="#f59e0b" stroke-width="2"/>`;
+    }
+
+    const svgContent = `
+      <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#ffffff"/>
+        ${circles}
+        <text x="150" y="30" text-anchor="middle" font-size="14" fill="#000">First Round: 6 sc in MR</text>
+      </svg>
+    `;
+
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crochet-diagram-${Date.now()}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to PDF
+  const exportToPdf = () => {
+    const printWindow = window.open('', '', 'width=600,height=600');
+    if (!printWindow) return;
+
+    const content = `
+      <h1>Crochet Pattern</h1>
+      <p><strong>Generated by:</strong> CrochetAmigurumiEngine-v5.0</p>
+      <h2>Instructions</h2>
+      <ol>
+        ${pattern.map(p => `<li>${p.instruction} (${p.stitches} sts)</li>`).join('')}
+      </ol>
+      <p><em>Print this page as PDF using your browser's print dialog.</em></p>
+    `;
+
+    printWindow.document.write(`
+      <html>
+        <head><title>Crochet Pattern</title></head>
+        <body style="font-family:Arial;padding:20px">${content}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  // Expose all functions and state
   return {
     rounds,
     currentRound,
     pattern,
     addNextRound,
-    loadPattern
+    loadPattern,
+    savePattern,
+    loadPatternFromStorage,
+    exportToJson,
+    exportToSvg,
+    exportToPdf
   };
 }
 
